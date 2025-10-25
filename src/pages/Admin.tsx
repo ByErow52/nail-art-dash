@@ -28,18 +28,21 @@ interface Service {
   duration: number;
 }
 
+interface Profile {
+  user_id: string;
+  first_name: string;
+  last_name: string;
+  phone: string;
+}
+
 interface Booking {
   id: string;
+  user_id: string;
   booking_date: string;
   booking_time: string;
   status: string;
   notes: string | null;
   service_ids: string[];
-  profiles: {
-    first_name: string;
-    last_name: string;
-    phone: string;
-  };
 }
 
 const Admin = () => {
@@ -49,6 +52,7 @@ const Admin = () => {
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [services, setServices] = useState<Service[]>([]);
+  const [profiles, setProfiles] = useState<Profile[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
 
@@ -105,17 +109,26 @@ const Admin = () => {
       setServices(servicesData);
     }
 
+    // Fetch all profiles
+    const { data: profilesData } = await supabase
+      .from('profiles')
+      .select('user_id, first_name, last_name, phone');
+    
+    if (profilesData) {
+      setProfiles(profilesData);
+    }
+
     // Fetch bookings
     const { data } = await supabase
       .from('bookings')
       .select(`
         id,
+        user_id,
         booking_date,
         booking_time,
         status,
         notes,
-        service_ids,
-        profiles (first_name, last_name, phone)
+        service_ids
       `)
       .order('booking_date', { ascending: true })
       .order('booking_time', { ascending: true });
@@ -136,6 +149,10 @@ const Admin = () => {
 
   const getTotalDuration = (serviceIds: string[]) => {
     return getServicesByIds(serviceIds).reduce((total, s) => total + s.duration, 0);
+  };
+
+  const getProfileByUserId = (userId: string) => {
+    return profiles.find((p) => p.user_id === userId);
   };
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
@@ -243,42 +260,46 @@ const Admin = () => {
                     </CardContent>
                   </Card>
                 ) : (
-                  (tab === 'all' ? bookings : filterBookingsByStatus(tab)).map((booking) => (
-                    <Card key={booking.id} className="shadow-[var(--shadow-soft)]">
-                      <CardContent className="pt-6">
-                        <div className="flex items-start justify-between">
-                          <div className="space-y-3 flex-1">
-                            <div className="flex items-start justify-between">
-                              <div className="flex-1">
-                                <h3 className="font-semibold text-lg mb-2">Услуги:</h3>
-                                <div className="space-y-1">
-                                  {getServicesByIds(booking.service_ids).map((service) => (
-                                    <div key={service.id} className="text-sm">
-                                      • {service.name} - {service.price} MDL ({service.duration} мин)
-                                    </div>
-                                  ))}
+                  (tab === 'all' ? bookings : filterBookingsByStatus(tab)).map((booking) => {
+                    const profile = getProfileByUserId(booking.user_id);
+                    return (
+                      <Card key={booking.id} className="shadow-[var(--shadow-soft)]">
+                        <CardContent className="pt-6">
+                          <div className="flex items-start justify-between">
+                            <div className="space-y-3 flex-1">
+                              <div className="flex items-start justify-between">
+                                <div className="flex-1">
+                                  <h3 className="font-semibold text-lg mb-2">Услуги:</h3>
+                                  <div className="space-y-1">
+                                    {getServicesByIds(booking.service_ids).map((service) => (
+                                      <div key={service.id} className="text-sm">
+                                        • {service.name} - {service.price} MDL ({service.duration} мин)
+                                      </div>
+                                    ))}
+                                  </div>
+                                  <p className="text-sm text-muted-foreground font-semibold mt-2">
+                                    Итого: {getTotalPrice(booking.service_ids)} MDL · {getTotalDuration(booking.service_ids)} мин
+                                  </p>
                                 </div>
-                                <p className="text-sm text-muted-foreground font-semibold mt-2">
-                                  Итого: {getTotalPrice(booking.service_ids)} MDL · {getTotalDuration(booking.service_ids)} мин
-                                </p>
+                                {getStatusBadge(booking.status)}
                               </div>
-                              {getStatusBadge(booking.status)}
-                            </div>
 
-                            <div className="flex flex-wrap gap-4 text-sm">
-                              <div className="flex items-center gap-2">
-                                <User className="h-4 w-4 text-primary" />
-                                <span>
-                                  {booking.profiles.first_name} {booking.profiles.last_name}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-2">
-                                <Phone className="h-4 w-4 text-primary" />
-                                <a href={`tel:${booking.profiles.phone}`} className="hover:underline">
-                                  {booking.profiles.phone}
-                                </a>
-                              </div>
-                            </div>
+                              {profile && (
+                                <div className="flex flex-wrap gap-4 text-sm">
+                                  <div className="flex items-center gap-2">
+                                    <User className="h-4 w-4 text-primary" />
+                                    <span>
+                                      {profile.first_name} {profile.last_name}
+                                    </span>
+                                  </div>
+                                  <div className="flex items-center gap-2">
+                                    <Phone className="h-4 w-4 text-primary" />
+                                    <a href={`tel:${profile.phone}`} className="hover:underline">
+                                      {profile.phone}
+                                    </a>
+                                  </div>
+                                </div>
+                              )}
 
                             <div className="flex flex-wrap gap-4 text-sm">
                               <div className="flex items-center gap-2">
@@ -325,12 +346,13 @@ const Admin = () => {
                                 <X className="h-4 w-4 mr-1" />
                                 Удалить
                               </Button>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))
+                        </CardContent>
+                      </Card>
+                    );
+                  })
                 )}
               </div>
             </TabsContent>
