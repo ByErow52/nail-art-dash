@@ -42,7 +42,7 @@ export type Database = {
           created_at: string
           id: string
           notes: string | null
-          service_id: string
+          service_ids: string[]
           status: string
           updated_at: string
           user_id: string
@@ -53,7 +53,7 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          service_id: string
+          service_ids?: string[]
           status?: string
           updated_at?: string
           user_id: string
@@ -64,20 +64,12 @@ export type Database = {
           created_at?: string
           id?: string
           notes?: string | null
-          service_id?: string
+          service_ids?: string[]
           status?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "bookings_service_id_fkey"
-            columns: ["service_id"]
-            isOneToOne: false
-            referencedRelation: "services"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       profiles: {
         Row: {

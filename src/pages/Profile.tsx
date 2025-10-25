@@ -29,17 +29,20 @@ interface Profile {
   phone: string;
 }
 
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+}
+
 interface Booking {
   id: string;
   booking_date: string;
   booking_time: string;
   status: string;
   notes: string | null;
-  services: {
-    name: string;
-    price: number;
-    duration: number;
-  };
+  service_ids: string[];
 }
 
 const Profile = () => {
@@ -48,6 +51,7 @@ const Profile = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
 
@@ -57,6 +61,7 @@ const Profile = () => {
       if (!session) {
         navigate("/auth");
       } else {
+        fetchServices();
         fetchProfile(session.user.id);
         fetchBookings(session.user.id);
       }
@@ -71,6 +76,16 @@ const Profile = () => {
 
     return () => subscription.unsubscribe();
   }, [navigate]);
+
+  const fetchServices = async () => {
+    const { data } = await supabase
+      .from('services')
+      .select('id, name, price, duration');
+    
+    if (data) {
+      setServices(data);
+    }
+  };
 
   const fetchProfile = async (userId: string) => {
     const { data } = await supabase
@@ -93,7 +108,7 @@ const Profile = () => {
         booking_time,
         status,
         notes,
-        services (name, price, duration)
+        service_ids
       `)
       .eq('user_id', userId)
       .order('booking_date', { ascending: false })
@@ -102,6 +117,18 @@ const Profile = () => {
     if (data) {
       setBookings(data as any);
     }
+  };
+
+  const getServicesByIds = (serviceIds: string[]) => {
+    return services.filter((s) => serviceIds.includes(s.id));
+  };
+
+  const getTotalPrice = (serviceIds: string[]) => {
+    return getServicesByIds(serviceIds).reduce((total, s) => total + s.price, 0);
+  };
+
+  const getTotalDuration = (serviceIds: string[]) => {
+    return getServicesByIds(serviceIds).reduce((total, s) => total + s.duration, 0);
   };
 
   const handleUpdateProfile = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -257,11 +284,16 @@ const Profile = () => {
                       <div className="flex items-start justify-between">
                         <div className="space-y-3 flex-1">
                           <div>
-                            <h3 className="font-semibold text-lg">
-                              {booking.services.name}
-                            </h3>
-                            <p className="text-sm text-muted-foreground">
-                              {booking.services.price} MDL · {booking.services.duration} мин
+                            <h3 className="font-semibold text-lg mb-2">Услуги:</h3>
+                            <div className="space-y-1">
+                              {getServicesByIds(booking.service_ids).map((service) => (
+                                <div key={service.id} className="text-sm">
+                                  • {service.name} - {service.price} MDL ({service.duration} мин)
+                                </div>
+                              ))}
+                            </div>
+                            <p className="text-sm text-muted-foreground font-semibold mt-2">
+                              Итого: {getTotalPrice(booking.service_ids)} MDL · {getTotalDuration(booking.service_ids)} мин
                             </p>
                           </div>
 

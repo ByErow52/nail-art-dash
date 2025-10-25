@@ -8,9 +8,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { addDays, format, isWithinInterval, parse } from "date-fns";
+import { addDays, format } from "date-fns";
 import { ru } from "date-fns/locale";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { X } from "lucide-react";
 
 interface Service {
   id: string;
@@ -25,7 +27,7 @@ const Booking = () => {
   const navigate = useNavigate();
   const [session, setSession] = useState<Session | null>(null);
   const [services, setServices] = useState<Service[]>([]);
-  const [selectedService, setSelectedService] = useState<string>("");
+  const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [selectedTime, setSelectedTime] = useState<string>("");
   const [notes, setNotes] = useState("");
@@ -101,10 +103,36 @@ const Booking = () => {
     return times;
   };
 
+  const toggleService = (serviceId: string) => {
+    setSelectedServices((prev) => 
+      prev.includes(serviceId)
+        ? prev.filter((id) => id !== serviceId)
+        : [...prev, serviceId]
+    );
+  };
+
+  const removeService = (serviceId: string) => {
+    setSelectedServices((prev) => prev.filter((id) => id !== serviceId));
+  };
+
+  const getTotalPrice = () => {
+    return selectedServices.reduce((total, serviceId) => {
+      const service = services.find((s) => s.id === serviceId);
+      return total + (service?.price || 0);
+    }, 0);
+  };
+
+  const getTotalDuration = () => {
+    return selectedServices.reduce((total, serviceId) => {
+      const service = services.find((s) => s.id === serviceId);
+      return total + (service?.duration || 0);
+    }, 0);
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!session || !selectedService || !selectedDate || !selectedTime) {
+    if (!session || selectedServices.length === 0 || !selectedDate || !selectedTime) {
       toast({
         title: "Ошибка",
         description: "Пожалуйста, заполните все обязательные поля",
@@ -120,7 +148,7 @@ const Booking = () => {
         .from('bookings')
         .insert({
           user_id: session.user.id,
-          service_id: selectedService,
+          service_ids: selectedServices,
           booking_date: format(selectedDate, 'yyyy-MM-dd'),
           booking_time: selectedTime,
           notes: notes || null,
@@ -162,20 +190,67 @@ const Booking = () => {
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="space-y-2">
-                <Label htmlFor="service">Выберите услугу *</Label>
-                <Select value={selectedService} onValueChange={setSelectedService}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Выберите услугу" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {services.map((service) => (
-                      <SelectItem key={service.id} value={service.id}>
-                        {service.name} - {service.price} MDL ({service.duration} мин)
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+              <div className="space-y-4">
+                <Label>Выберите услуги * (можно выбрать несколько)</Label>
+                
+                {selectedServices.length > 0 && (
+                  <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                    <p className="text-sm font-medium">Выбранные услуги:</p>
+                    <div className="flex flex-wrap gap-2">
+                      {selectedServices.map((serviceId) => {
+                        const service = services.find((s) => s.id === serviceId);
+                        return service ? (
+                          <Badge key={serviceId} variant="secondary" className="gap-1">
+                            {service.name}
+                            <X
+                              className="h-3 w-3 cursor-pointer"
+                              onClick={() => removeService(serviceId)}
+                            />
+                          </Badge>
+                        ) : null;
+                      })}
+                    </div>
+                    <div className="text-sm text-muted-foreground mt-2">
+                      <p>Общая стоимость: {getTotalPrice()} MDL</p>
+                      <p>Общая продолжительность: {getTotalDuration()} мин</p>
+                    </div>
+                  </div>
+                )}
+
+                <div className="space-y-3 max-h-96 overflow-y-auto">
+                  {Object.entries(
+                    services.reduce((acc, service) => {
+                      if (!acc[service.category]) acc[service.category] = [];
+                      acc[service.category].push(service);
+                      return acc;
+                    }, {} as Record<string, Service[]>)
+                  ).map(([category, categoryServices]) => (
+                    <div key={category} className="space-y-2">
+                      <h3 className="font-semibold text-sm text-primary">{category}</h3>
+                      {categoryServices.map((service) => (
+                        <div
+                          key={service.id}
+                          className="flex items-start space-x-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <Checkbox
+                            id={service.id}
+                            checked={selectedServices.includes(service.id)}
+                            onCheckedChange={() => toggleService(service.id)}
+                          />
+                          <label
+                            htmlFor={service.id}
+                            className="flex-1 cursor-pointer text-sm"
+                          >
+                            <div className="font-medium">{service.name}</div>
+                            <div className="text-muted-foreground">
+                              {service.price} MDL · {service.duration} мин
+                            </div>
+                          </label>
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -200,18 +275,20 @@ const Booking = () => {
               {selectedDate && (
                 <div className="space-y-2">
                   <Label htmlFor="time">Выберите время *</Label>
-                  <Select value={selectedTime} onValueChange={setSelectedTime}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Выберите время" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-60">
-                      {getAvailableTimes().map((time) => (
-                        <SelectItem key={time} value={time}>
-                          {time}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                    {getAvailableTimes().map((time) => (
+                      <Button
+                        key={time}
+                        type="button"
+                        variant={selectedTime === time ? "default" : "outline"}
+                        size="sm"
+                        onClick={() => setSelectedTime(time)}
+                        className="w-full"
+                      >
+                        {time}
+                      </Button>
+                    ))}
+                  </div>
                 </div>
               )}
 

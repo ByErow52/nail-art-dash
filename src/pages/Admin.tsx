@@ -21,17 +21,20 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 
+interface Service {
+  id: string;
+  name: string;
+  price: number;
+  duration: number;
+}
+
 interface Booking {
   id: string;
   booking_date: string;
   booking_time: string;
   status: string;
   notes: string | null;
-  services: {
-    name: string;
-    price: number;
-    duration: number;
-  };
+  service_ids: string[];
   profiles: {
     first_name: string;
     last_name: string;
@@ -45,6 +48,7 @@ const Admin = () => {
   const [session, setSession] = useState<Session | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [deleteBookingId, setDeleteBookingId] = useState<string | null>(null);
 
@@ -91,6 +95,17 @@ const Admin = () => {
 
   const fetchBookings = async () => {
     setLoading(true);
+    
+    // Fetch services
+    const { data: servicesData } = await supabase
+      .from('services')
+      .select('id, name, price, duration');
+    
+    if (servicesData) {
+      setServices(servicesData);
+    }
+
+    // Fetch bookings
     const { data } = await supabase
       .from('bookings')
       .select(`
@@ -99,7 +114,7 @@ const Admin = () => {
         booking_time,
         status,
         notes,
-        services (name, price, duration),
+        service_ids,
         profiles (first_name, last_name, phone)
       `)
       .order('booking_date', { ascending: true })
@@ -109,6 +124,18 @@ const Admin = () => {
       setBookings(data as any);
     }
     setLoading(false);
+  };
+
+  const getServicesByIds = (serviceIds: string[]) => {
+    return services.filter((s) => serviceIds.includes(s.id));
+  };
+
+  const getTotalPrice = (serviceIds: string[]) => {
+    return getServicesByIds(serviceIds).reduce((total, s) => total + s.price, 0);
+  };
+
+  const getTotalDuration = (serviceIds: string[]) => {
+    return getServicesByIds(serviceIds).reduce((total, s) => total + s.duration, 0);
   };
 
   const handleStatusChange = async (bookingId: string, newStatus: string) => {
@@ -222,12 +249,17 @@ const Admin = () => {
                         <div className="flex items-start justify-between">
                           <div className="space-y-3 flex-1">
                             <div className="flex items-start justify-between">
-                              <div>
-                                <h3 className="font-semibold text-lg">
-                                  {booking.services.name}
-                                </h3>
-                                <p className="text-sm text-muted-foreground">
-                                  {booking.services.price} MDL · {booking.services.duration} мин
+                              <div className="flex-1">
+                                <h3 className="font-semibold text-lg mb-2">Услуги:</h3>
+                                <div className="space-y-1">
+                                  {getServicesByIds(booking.service_ids).map((service) => (
+                                    <div key={service.id} className="text-sm">
+                                      • {service.name} - {service.price} MDL ({service.duration} мин)
+                                    </div>
+                                  ))}
+                                </div>
+                                <p className="text-sm text-muted-foreground font-semibold mt-2">
+                                  Итого: {getTotalPrice(booking.service_ids)} MDL · {getTotalDuration(booking.service_ids)} мин
                                 </p>
                               </div>
                               {getStatusBadge(booking.status)}
