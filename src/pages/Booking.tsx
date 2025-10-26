@@ -8,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { useNavigate } from "react-router-dom";
 import { Session } from "@supabase/supabase-js";
-import { addDays, format } from "date-fns";
+import { addDays, format, startOfDay, isSameDay } from "date-fns";
 import { ru } from "date-fns/locale";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
@@ -34,6 +34,7 @@ const Booking = () => {
   const [loading, setLoading] = useState(false);
   const [workCycleStart, setWorkCycleStart] = useState<Date>(new Date(2025, 9, 25));
   const [existingBookings, setExistingBookings] = useState<any[]>([]);
+  const [scheduleOverrides, setScheduleOverrides] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -52,6 +53,7 @@ const Booking = () => {
 
     fetchServices();
     fetchSettings();
+    fetchScheduleOverrides();
 
     return () => subscription.unsubscribe();
   }, [navigate]);
@@ -81,7 +83,36 @@ const Booking = () => {
     }
   };
 
+  const fetchScheduleOverrides = async () => {
+    const { data } = await supabase
+      .from('schedule_overrides')
+      .select('*')
+      .gte('date_to', format(new Date(), 'yyyy-MM-dd'));
+
+    if (data) {
+      setScheduleOverrides(data);
+    }
+  };
+
   const isWorkingDay = (date: Date): boolean => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    
+    // Специальная блокировка для 27 октября (всегда недоступна)
+    if (isSameDay(date, new Date(2025, 9, 27))) {
+      return false;
+    }
+    
+    // Проверяем переопределения расписания
+    for (const override of scheduleOverrides) {
+      const overrideStart = new Date(override.date_from);
+      const overrideEnd = new Date(override.date_to);
+      
+      if (date >= overrideStart && date <= overrideEnd) {
+        return override.is_working;
+      }
+    }
+    
+    // Стандартная логика: 2 дня работы / 2 дня выходных
     const daysDiff = Math.floor((date.getTime() - workCycleStart.getTime()) / (1000 * 60 * 60 * 24));
     const cycleDay = daysDiff % 4;
     return cycleDay === 0 || cycleDay === 1;
@@ -311,7 +342,7 @@ const Booking = () => {
                     }
                   }}
                   disabled={(date) =>
-                    date < new Date() ||
+                    startOfDay(date) < startOfDay(new Date()) ||
                     date > addDays(new Date(), 60) ||
                     !isWorkingDay(date)
                   }

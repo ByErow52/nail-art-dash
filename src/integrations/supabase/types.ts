@@ -101,6 +101,36 @@ export type Database = {
         }
         Relationships: []
       }
+      schedule_overrides: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          date_from: string
+          date_to: string
+          id: string
+          is_working: boolean
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          date_from: string
+          date_to: string
+          id?: string
+          is_working: boolean
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          date_from?: string
+          date_to?: string
+          id?: string
+          is_working?: boolean
+          reason?: string | null
+        }
+        Relationships: []
+      }
       services: {
         Row: {
           category: string

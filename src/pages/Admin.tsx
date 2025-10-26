@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, Clock, Phone, User, X } from "lucide-react";
 import { format } from "date-fns";
 import { ru } from "date-fns/locale";
+import ScheduleManager from "@/components/ScheduleManager";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -236,7 +237,14 @@ const Admin = () => {
       <div className="container mx-auto px-4 max-w-6xl">
         <h1 className="text-4xl font-bold mb-8 text-center">Панель администратора</h1>
 
-        <Tabs defaultValue="all" className="w-full">
+        <Tabs defaultValue="bookings" className="w-full">
+          <TabsList className="grid w-full grid-cols-2 mb-8">
+            <TabsTrigger value="bookings">Записи</TabsTrigger>
+            <TabsTrigger value="schedule">Управление расписанием</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="bookings">
+            <Tabs defaultValue="all" className="w-full">
           <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
             <TabsTrigger value="all" className="text-xs sm:text-sm">
               Все ({bookings.length})
@@ -359,6 +367,12 @@ const Admin = () => {
               </div>
             </TabsContent>
           ))}
+            </Tabs>
+          </TabsContent>
+
+          <TabsContent value="schedule">
+            <ScheduleManager />
+          </TabsContent>
         </Tabs>
 
         <AlertDialog open={!!deleteBookingId} onOpenChange={() => setDeleteBookingId(null)}>
