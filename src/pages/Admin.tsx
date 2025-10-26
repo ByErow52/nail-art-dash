@@ -237,15 +237,17 @@ const Admin = () => {
         <h1 className="text-4xl font-bold mb-8 text-center">Панель администратора</h1>
 
         <Tabs defaultValue="all" className="w-full">
-          <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="all">Все ({bookings.length})</TabsTrigger>
-            <TabsTrigger value="pending">
+          <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 gap-1">
+            <TabsTrigger value="all" className="text-xs sm:text-sm">
+              Все ({bookings.length})
+            </TabsTrigger>
+            <TabsTrigger value="pending" className="text-xs sm:text-sm">
               Ожидают ({filterBookingsByStatus('pending').length})
             </TabsTrigger>
-            <TabsTrigger value="confirmed">
-              Подтверждены ({filterBookingsByStatus('confirmed').length})
+            <TabsTrigger value="confirmed" className="text-xs sm:text-sm">
+              Подтвержд. ({filterBookingsByStatus('confirmed').length})
             </TabsTrigger>
-            <TabsTrigger value="cancelled">
+            <TabsTrigger value="cancelled" className="text-xs sm:text-sm">
               Отменены ({filterBookingsByStatus('cancelled').length})
             </TabsTrigger>
           </TabsList>

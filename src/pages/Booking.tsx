@@ -33,6 +33,7 @@ const Booking = () => {
   const [notes, setNotes] = useState("");
   const [loading, setLoading] = useState(false);
   const [workCycleStart, setWorkCycleStart] = useState<Date>(new Date(2025, 9, 25));
+  const [existingBookings, setExistingBookings] = useState<any[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
@@ -86,6 +87,50 @@ const Booking = () => {
     return cycleDay === 0 || cycleDay === 1;
   };
 
+  const fetchBookingsForDate = async (date: Date) => {
+    const dateStr = format(date, 'yyyy-MM-dd');
+    const { data } = await supabase
+      .from('bookings')
+      .select('booking_time, service_ids, status')
+      .eq('booking_date', dateStr)
+      .in('status', ['pending', 'confirmed']);
+
+    if (data) {
+      setExistingBookings(data);
+    } else {
+      setExistingBookings([]);
+    }
+  };
+
+  const isTimeSlotAvailable = (timeStr: string): boolean => {
+    const [hours, minutes] = timeStr.split(':').map(Number);
+    const slotStart = hours * 60 + minutes;
+    const totalDuration = getTotalDuration();
+    const slotEnd = slotStart + totalDuration;
+
+    for (const booking of existingBookings) {
+      const [bookingHours, bookingMinutes] = booking.booking_time.split(':').map(Number);
+      const bookingStart = bookingHours * 60 + bookingMinutes;
+      
+      const bookingDuration = booking.service_ids.reduce((total: number, serviceId: string) => {
+        const service = services.find((s) => s.id === serviceId);
+        return total + (service?.duration || 0);
+      }, 0);
+      
+      const bookingEnd = bookingStart + bookingDuration;
+
+      if (
+        (slotStart >= bookingStart && slotStart < bookingEnd) ||
+        (slotEnd > bookingStart && slotEnd <= bookingEnd) ||
+        (slotStart <= bookingStart && slotEnd >= bookingEnd)
+      ) {
+        return false;
+      }
+    }
+
+    return true;
+  };
+
   const getAvailableTimes = (): string[] => {
     if (!selectedDate) return [];
 
@@ -100,7 +145,7 @@ const Booking = () => {
       }
     }
 
-    return times;
+    return times.filter(isTimeSlotAvailable);
   };
 
   const toggleService = (serviceId: string) => {
@@ -258,7 +303,13 @@ const Booking = () => {
                 <Calendar
                   mode="single"
                   selected={selectedDate}
-                  onSelect={setSelectedDate}
+                  onSelect={(date) => {
+                    setSelectedDate(date);
+                    setSelectedTime("");
+                    if (date) {
+                      fetchBookingsForDate(date);
+                    }
+                  }}
                   disabled={(date) =>
                     date < new Date() ||
                     date > addDays(new Date(), 60) ||
