@@ -251,43 +251,43 @@ const Booking = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-12">
-      <div className="container mx-auto px-4 max-w-4xl">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold mb-2">Онлайн запись</h1>
-          <p className="text-muted-foreground">
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted/20 py-6 sm:py-12">
+      <div className="container mx-auto px-3 sm:px-4 max-w-4xl">
+        <div className="text-center mb-6 sm:mb-8">
+          <h1 className="text-3xl sm:text-4xl font-bold mb-2">Онлайн запись</h1>
+          <p className="text-sm sm:text-base text-muted-foreground">
             Выберите услугу, дату и время для записи
           </p>
         </div>
 
         <Card className="shadow-[var(--shadow-soft)]">
-          <CardHeader>
-            <CardTitle>Создать запись</CardTitle>
+          <CardHeader className="px-4 sm:px-6">
+            <CardTitle className="text-xl sm:text-2xl">Создать запись</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 sm:px-6">
             <form onSubmit={handleSubmit} className="space-y-6">
               <div className="space-y-4">
                 <Label>Выберите услуги * (можно выбрать несколько)</Label>
                 
                 {selectedServices.length > 0 && (
-                  <div className="space-y-2 p-4 bg-muted/30 rounded-lg">
+                  <div className="space-y-2 p-3 sm:p-4 bg-muted/30 rounded-lg">
                     <p className="text-sm font-medium">Выбранные услуги:</p>
                     <div className="flex flex-wrap gap-2">
                       {selectedServices.map((serviceId) => {
                         const service = services.find((s) => s.id === serviceId);
                         return service ? (
-                          <Badge key={serviceId} variant="secondary" className="gap-1">
+                          <Badge key={serviceId} variant="secondary" className="gap-1 text-xs sm:text-sm py-1">
                             {service.name}
                             <X
-                              className="h-3 w-3 cursor-pointer"
+                              className="h-3 w-3 cursor-pointer hover:text-destructive"
                               onClick={() => removeService(serviceId)}
                             />
                           </Badge>
                         ) : null;
                       })}
                     </div>
-                    <div className="text-sm text-muted-foreground mt-2">
-                      <p>Общая стоимость: {getTotalPrice()} MDL</p>
+                    <div className="text-sm text-muted-foreground mt-2 space-y-1">
+                      <p className="font-medium">Общая стоимость: {getTotalPrice()} MDL</p>
                       <p>Общая продолжительность: {getTotalDuration()} мин</p>
                     </div>
                   </div>
@@ -341,13 +341,19 @@ const Booking = () => {
                       fetchBookingsForDate(date);
                     }
                   }}
-                  disabled={(date) =>
-                    startOfDay(date) < startOfDay(new Date()) ||
-                    date > addDays(new Date(), 60) ||
-                    !isWorkingDay(date)
-                  }
+                  disabled={(date) => {
+                    const today = startOfDay(new Date());
+                    const checkDate = startOfDay(date);
+                    // Блокируем только дни ДО сегодняшнего дня (не включая сегодня)
+                    // Сегодняшний день доступен до конца дня
+                    return (
+                      checkDate < today ||
+                      date > addDays(new Date(), 60) ||
+                      !isWorkingDay(date)
+                    );
+                  }}
                   locale={ru}
-                  className="rounded-md border"
+                  className="rounded-md border w-full"
                 />
                 <p className="text-sm text-muted-foreground">
                   Работаем 2 дня / 2 дня выходных. Доступны только рабочие дни.
@@ -357,20 +363,25 @@ const Booking = () => {
               {selectedDate && (
                 <div className="space-y-2">
                   <Label htmlFor="time">Выберите время *</Label>
-                  <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                     {getAvailableTimes().map((time) => (
                       <Button
                         key={time}
                         type="button"
                         variant={selectedTime === time ? "default" : "outline"}
-                        size="sm"
+                        size="lg"
                         onClick={() => setSelectedTime(time)}
-                        className="w-full"
+                        className="w-full min-h-[44px] text-base"
                       >
                         {time}
                       </Button>
                     ))}
                   </div>
+                  {getAvailableTimes().length === 0 && (
+                    <p className="text-sm text-muted-foreground text-center py-4">
+                      На выбранную дату нет свободных слотов времени
+                    </p>
+                  )}
                 </div>
               )}
 
