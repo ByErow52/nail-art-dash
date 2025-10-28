@@ -90,7 +90,7 @@ All colors MUST be HSL.
 }
 
 /* Hide Lovable badge widget */
-/* [data-lovable-badge],
+[data-lovable-badge],
 iframe[src*="lovable.app/badge"],
 a[href*="lovable.app"][aria-label*="Edit"],
 div[class*="lovable-badge"],
@@ -99,4 +99,4 @@ button[class*="lovable-badge"] {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-}*/
+}
