@@ -6,7 +6,7 @@
 All colors MUST be HSL.
 */
 
-/*@layer base {
+@layer base {
   :root {
     --background: 37 28% 96%;
     --foreground: 30 8% 20%;
@@ -89,7 +89,7 @@ All colors MUST be HSL.
   }
 }
 
-/* Hide Lovable badge widget */
+/* Hide Lovable badge widget 
 [data-lovable-badge],
 iframe[src*="lovable.app/badge"],
 a[href*="lovable.app"][aria-label*="Edit"],
@@ -99,5 +99,5 @@ button[class*="lovable-badge"] {
   visibility: hidden !important;
   opacity: 0 !important;
   pointer-events: none !important;
-}
- */
+} */
+
