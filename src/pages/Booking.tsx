@@ -139,6 +139,7 @@ const Booking = () => {
     const totalDuration = getTotalDuration();
     const slotEnd = slotStart + totalDuration;
 
+    // Проверяем существующие записи
     for (const booking of existingBookings) {
       const [bookingHours, bookingMinutes] = booking.booking_time.split(':').map(Number);
       const bookingStart = bookingHours * 60 + bookingMinutes;
@@ -156,6 +157,35 @@ const Booking = () => {
         (slotStart <= bookingStart && slotEnd >= bookingEnd)
       ) {
         return false;
+      }
+    }
+
+    // Проверяем заблокированные временные интервалы
+    if (selectedDate) {
+      const dateStr = format(selectedDate, 'yyyy-MM-dd');
+      
+      for (const override of scheduleOverrides) {
+        const overrideStart = new Date(override.date_from);
+        const overrideEnd = new Date(override.date_to);
+        
+        if (selectedDate >= overrideStart && selectedDate <= overrideEnd) {
+          // Если есть временной интервал и день не рабочий
+          if (!override.is_working && override.time_from && override.time_to) {
+            const [blockStartHours, blockStartMinutes] = override.time_from.split(':').map(Number);
+            const [blockEndHours, blockEndMinutes] = override.time_to.split(':').map(Number);
+            const blockStart = blockStartHours * 60 + blockStartMinutes;
+            const blockEnd = blockEndHours * 60 + blockEndMinutes;
+
+            // Проверяем, пересекается ли слот с заблокированным интервалом
+            if (
+              (slotStart >= blockStart && slotStart < blockEnd) ||
+              (slotEnd > blockStart && slotEnd <= blockEnd) ||
+              (slotStart <= blockStart && slotEnd >= blockEnd)
+            ) {
+              return false;
+            }
+          }
+        }
       }
     }
 

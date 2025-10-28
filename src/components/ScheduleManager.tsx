@@ -19,6 +19,8 @@ interface ScheduleOverride {
   is_working: boolean;
   reason: string | null;
   created_at: string;
+  time_from: string | null;
+  time_to: string | null;
 }
 
 const ScheduleManager = () => {
@@ -28,6 +30,9 @@ const ScheduleManager = () => {
   const [vacationTo, setVacationTo] = useState<Date | undefined>();
   const [blockDate, setBlockDate] = useState<Date | undefined>();
   const [workDate, setWorkDate] = useState<Date | undefined>();
+  const [timeBlockDate, setTimeBlockDate] = useState<Date | undefined>();
+  const [timeFrom, setTimeFrom] = useState("");
+  const [timeTo, setTimeTo] = useState("");
   const [reason, setReason] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -175,6 +180,62 @@ const ScheduleManager = () => {
     }
   };
 
+  const handleBlockTimeSlot = async () => {
+    if (!timeBlockDate || !timeFrom || !timeTo) {
+      toast({
+        title: "Ошибка",
+        description: "Выберите дату, время начала и время окончания",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (timeFrom >= timeTo) {
+      toast({
+        title: "Ошибка",
+        description: "Время окончания должно быть позже времени начала",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const dateStr = format(timeBlockDate, 'yyyy-MM-dd');
+      const { error } = await supabase
+        .from('schedule_overrides')
+        .insert({
+          date_from: dateStr,
+          date_to: dateStr,
+          is_working: false,
+          time_from: timeFrom,
+          time_to: timeTo,
+          reason: reason || 'Временной интервал заблокирован',
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Интервал заблокирован",
+        description: `${format(timeBlockDate, 'dd.MM.yyyy')} с ${timeFrom} до ${timeTo} недоступен`,
+      });
+
+      setTimeBlockDate(undefined);
+      setTimeFrom("");
+      setTimeTo("");
+      setReason("");
+      fetchOverrides();
+    } catch (error: any) {
+      toast({
+        title: "Ошибка",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
+
   const handleDelete = async (id: string) => {
     try {
       const { error } = await supabase
@@ -201,7 +262,7 @@ const ScheduleManager = () => {
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-2">
         <Card>
           <CardHeader>
             <CardTitle className="text-lg">Отпуск</CardTitle>
@@ -324,6 +385,70 @@ const ScheduleManager = () => {
 
       <Card>
         <CardHeader>
+          <CardTitle className="text-lg">Заблокировать временной интервал</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-3">
+            <div className="space-y-2">
+              <Label>Выберите дату</Label>
+              <div className="border rounded-md p-2">
+                <Calendar
+                  mode="single"
+                  selected={timeBlockDate}
+                  onSelect={setTimeBlockDate}
+                  locale={ru}
+                  className="pointer-events-auto"
+                />
+              </div>
+            </div>
+            <div className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="time_from">Время начала</Label>
+                <Input
+                  id="time_from"
+                  type="time"
+                  value={timeFrom}
+                  onChange={(e) => setTimeFrom(e.target.value)}
+                  placeholder="09:00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time_to">Время окончания</Label>
+                <Input
+                  id="time_to"
+                  type="time"
+                  value={timeTo}
+                  onChange={(e) => setTimeTo(e.target.value)}
+                  placeholder="10:00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="time_reason">Причина (необязательно)</Label>
+                <Textarea
+                  id="time_reason"
+                  value={reason}
+                  onChange={(e) => setReason(e.target.value)}
+                  placeholder="Например: Обед, Личное время"
+                  rows={2}
+                />
+              </div>
+            </div>
+            <div className="flex items-end">
+              <Button 
+                onClick={handleBlockTimeSlot} 
+                disabled={loading}
+                variant="destructive"
+                className="w-full"
+              >
+                Заблокировать интервал
+              </Button>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
           <CardTitle>Все переопределения</CardTitle>
         </CardHeader>
         <CardContent>
@@ -338,13 +463,16 @@ const ScheduleManager = () => {
                   key={override.id}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-3 flex-wrap">
                     <CalendarIcon className="h-4 w-4 text-muted-foreground" />
                     <div>
                       <div className="font-medium">
                         {format(new Date(override.date_from), 'dd.MM.yyyy')}
                         {override.date_from !== override.date_to && 
                           ` - ${format(new Date(override.date_to), 'dd.MM.yyyy')}`
+                        }
+                        {override.time_from && override.time_to && 
+                          ` (${override.time_from.slice(0, 5)} - ${override.time_to.slice(0, 5)})`
                         }
                       </div>
                       {override.reason && (
@@ -354,7 +482,7 @@ const ScheduleManager = () => {
                       )}
                     </div>
                     <Badge variant={override.is_working ? "default" : "secondary"}>
-                      {override.is_working ? "Рабочий" : "Выходной"}
+                      {override.is_working ? "Рабочий" : override.time_from && override.time_to ? "Частично" : "Выходной"}
                     </Badge>
                   </div>
                   <Button

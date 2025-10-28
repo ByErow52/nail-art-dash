@@ -110,6 +110,8 @@ export type Database = {
           id: string
           is_working: boolean
           reason: string | null
+          time_from: string | null
+          time_to: string | null
         }
         Insert: {
           created_at?: string
@@ -119,6 +121,8 @@ export type Database = {
           id?: string
           is_working: boolean
           reason?: string | null
+          time_from?: string | null
+          time_to?: string | null
         }
         Update: {
           created_at?: string
@@ -128,6 +132,8 @@ export type Database = {
           id?: string
           is_working?: boolean
           reason?: string | null
+          time_from?: string | null
+          time_to?: string | null
         }
         Relationships: []
       }
