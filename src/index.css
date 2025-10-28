@@ -6,7 +6,7 @@
 All colors MUST be HSL.
 */
 
-@layer base {
+/*@layer base {
   :root {
     --background: 37 28% 96%;
     --foreground: 30 8% 20%;
@@ -100,3 +100,4 @@ button[class*="lovable-badge"] {
   opacity: 0 !important;
   pointer-events: none !important;
 }
+ */
